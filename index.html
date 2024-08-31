@@ -10,7 +10,7 @@
             text-align: center;
             padding: 20px;
         }
-
+        
         button {
             font-size: 16px;
             padding: 10px 20px;
@@ -20,57 +20,56 @@
         }
 
         #connectButton {
-            background-color: #007bff; /* Primary color */
+            background-color: #007bff;
             color: white;
         }
-
+        
         #connectButton.hidden {
             display: none;
         }
 
-        #dispenseButton {
-            background-color: #add8e6; /* Light blue background */
-            color: black;
-            border-radius: 12px; /* Rounded corners */
+        #qr-reader {
+            width: 300px;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+            background-color: #f8f8f8;
+            padding: 10px;
         }
 
-        #dispenseButton:hover {
-            background-color: #87ceeb; /* Slightly darker blue on hover */
-            transform: scale(1.05); /* Slightly enlarge the button on hover */
+        #qr-result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: green;
         }
 
-        #dispenseButton:disabled {
-            background-color: #d3d3d3; /* Gray background for disabled state */
-            cursor: not-allowed;
+        video {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>Vending Machine</h1>
-    <button id="connectButton">Connect to Machine</button>
-    <button id="dispenseButton" disabled>Dispense Item</button>
+    <h1>Vending Machine Control</h1>
+    <button id="connectButton">Connect to Arduino</button>
+    
+    <div id="qr-reader"></div>
 
+    <!-- html5-qrcodeライブラリの読み込み -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
     <script>
         let port;
-        let writer;
+        let html5QrcodeScanner;
 
         document.getElementById('connectButton').addEventListener('click', async () => {
             try {
-                port = await navigator.serial.requestPort(); // ポートのリクエスト
-                await port.open({ baudRate: 9600 }); // ポートのオープン
-                document.getElementById('dispenseButton').disabled = false; // ボタンを有効化
-                document.getElementById('connectButton').classList.add('hidden'); // コネクトボタンを隠す
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                document.getElementById('connectButton').style.display = 'none'; // 接続後ボタンを非表示
                 console.log('Connected to Arduino');
+                startQRScanner();
             } catch (error) {
                 console.error('Error connecting to Arduino:', error);
-            }
-        });
-
-        document.getElementById('dispenseButton').addEventListener('click', async () => {
-            if (port) {
-                await sendCommand('dispense_item');
-            } else {
-                console.error('No connection to Arduino');
             }
         });
 
@@ -87,6 +86,40 @@
             } catch (error) {
                 console.error('Error sending command:', error);
             }
+        }
+
+        function startQRScanner() {
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                console.log(`QRコード読み取り成功: ${decodedText}`);
+                document.getElementById('qr-result').innerText = `読み取ったQRコード: ${decodedText}`;
+                html5QrcodeScanner.clear().then(_ => {
+                    console.log('QRスキャナーを停止しました');
+                }).catch(error => {
+                    console.error('QRスキャナー停止エラー:', error);
+                });
+
+                if (decodedText === 'dispense_item') {
+                    sendCommand('dispense_item');
+                } else {
+                    console.warn('無効なQRコードです');
+                }
+            };
+
+            const qrCodeErrorCallback = (errorMessage) => {
+                console.warn(`QRスキャンエラー: ${errorMessage}`);
+            };
+
+            html5QrcodeScanner = new Html5Qrcode("qr-reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                config,
+                qrCodeSuccessCallback,
+                qrCodeErrorCallback
+            ).catch(error => {
+                console.error('QRスキャナー起動エラー:', error);
+            });
         }
     </script>
 </body>

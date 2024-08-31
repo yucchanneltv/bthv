@@ -20,12 +20,23 @@
         }
 
         #connectButton {
-            background-color: #007bff;
+            background-color: #007bff; /* Primary color */
             color: white;
         }
-        
+
         #connectButton.hidden {
             display: none;
+        }
+
+        #qrButton {
+            background-color: #28a745; /* Green background */
+            color: white;
+            border-radius: 12px; /* Rounded corners */
+        }
+
+        #qrButton:disabled {
+            background-color: #d3d3d3; /* Gray background for disabled state */
+            cursor: not-allowed;
         }
 
         #qr-reader {
@@ -34,6 +45,7 @@
             border: 1px solid #ddd;
             background-color: #f8f8f8;
             padding: 10px;
+            display: none; /* Initially hidden */
         }
 
         #qr-result {
@@ -52,8 +64,10 @@
 <body>
     <h1>Vending Machine Control</h1>
     <button id="connectButton">Connect to Arduino</button>
+    <button id="qrButton" disabled>QRコードを読み取る</button>
     
     <div id="qr-reader"></div>
+    <div id="qr-result"></div>
 
     <!-- html5-qrcodeライブラリの読み込み -->
     <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
@@ -65,12 +79,17 @@
             try {
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 9600 });
-                document.getElementById('connectButton').style.display = 'none'; // 接続後ボタンを非表示
+                document.getElementById('connectButton').classList.add('hidden'); // 接続後ボタンを隠す
+                document.getElementById('qrButton').disabled = false; // QRボタンを有効化
                 console.log('Connected to Arduino');
-                startQRScanner();
             } catch (error) {
                 console.error('Error connecting to Arduino:', error);
             }
+        });
+
+        document.getElementById('qrButton').addEventListener('click', () => {
+            startQRScanner();
+            document.getElementById('qr-reader').style.display = 'block'; // QRリーダーを表示
         });
 
         async function sendCommand(command) {
@@ -92,12 +111,7 @@
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
                 console.log(`QRコード読み取り成功: ${decodedText}`);
                 document.getElementById('qr-result').innerText = `読み取ったQRコード: ${decodedText}`;
-                html5QrcodeScanner.clear().then(_ => {
-                    console.log('QRスキャナーを停止しました');
-                }).catch(error => {
-                    console.error('QRスキャナー停止エラー:', error);
-                });
-
+                
                 if (decodedText === 'dispense_item') {
                     sendCommand('dispense_item');
                 } else {

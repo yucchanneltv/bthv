@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vending Machine Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        button {
+            font-size: 16px;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        #connectButton {
+            background-color: #007bff; /* Primary color */
+            color: white;
+        }
+
+        #connectButton.hidden {
+            display: none;
+        }
+
+        #dispenseButton {
+            background-color: #add8e6; /* Light blue background */
+            color: black;
+            border-radius: 12px; /* Rounded corners */
+        }
+
+        #dispenseButton:hover {
+            background-color: #87ceeb; /* Slightly darker blue on hover */
+            transform: scale(1.05); /* Slightly enlarge the button on hover */
+        }
+
+        #dispenseButton:disabled {
+            background-color: #d3d3d3; /* Gray background for disabled state */
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vending Machine Control</h1>
+    <button id="connectButton">Connect to Arduino</button>
+    <button id="dispenseButton" disabled>Dispense Item</button>
+
+    <script>
+        let port;
+        let writer;
+
+        document.getElementById('connectButton').addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort(); // ポートのリクエスト
+                await port.open({ baudRate: 9600 }); // ポートのオープン
+                document.getElementById('dispenseButton').disabled = false; // ボタンを有効化
+                document.getElementById('connectButton').classList.add('hidden'); // コネクトボタンを隠す
+                console.log('Connected to Arduino');
+            } catch (error) {
+                console.error('Error connecting to Arduino:', error);
+            }
+        });
+
+        document.getElementById('dispenseButton').addEventListener('click', async () => {
+            if (port) {
+                await sendCommand('dispense_item');
+            } else {
+                console.error('No connection to Arduino');
+            }
+        });
+
+        async function sendCommand(command) {
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(command + '\n');
+                if (port.writable) {
+                    const writer = port.writable.getWriter();
+                    await writer.write(data);
+                    writer.releaseLock();
+                    console.log('Command sent:', command);
+                }
+            } catch (error) {
+                console.error('Error sending command:', error);
+            }
+        }
+    </script>
+</body>
+</html>
